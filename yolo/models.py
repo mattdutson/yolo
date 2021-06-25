@@ -13,7 +13,7 @@ LEAK_ALPHA = 0.1
 
 # Original architecture specification:
 # https://github.com/pjreddie/darknet/blob/master/cfg/yolov3.cfg
-def yolo_v3(darknet_weights=None):
+def yolo_v3(n_classes=80, darknet_weights=None):
     inputs = Input(shape=(None, None, 3))
     x = inputs
 
@@ -27,26 +27,38 @@ def yolo_v3(darknet_weights=None):
     x = _conv_block(x, w, 32)
     x = _conv_block(x, w, 64, strides=2)
     for _ in range(1):
-        x = _residual_block(x, w, 64)
+        x = _residual_block(x, w, 32)
     x = _conv_block(x, w, 128, strides=2)
     for _ in range(2):
-        x = _residual_block(x, w, 128)
+        x = _residual_block(x, w, 64)
     x = _conv_block(x, w, 256, strides=2)
     for _ in range(8):
-        x = _residual_block(x, w, 256)
+        x = _residual_block(x, w, 128)
+    skip_36 = x
     x = _conv_block(x, w, 512, strides=2)
     for _ in range(8):
-        x = _residual_block(x, w, 512)
+        x = _residual_block(x, w, 256)
+    skip_61 = x
     x = _conv_block(x, w, 1024, strides=2)
     for _ in range(4):
-        x = _residual_block(x, w, 1024)
+        x = _residual_block(x, w, 512)
 
-    for _ in range(3):
-        x = _conv_block(x, w, 512, kernel_size=1)
-        x = _conv_block(x, w, 1024)
-    x = _conv_block(x, w, 255, kernel_size=1, batch_norm=False)
+    # Output block 1
+    x, out_1 = _output_block(x, w, 512, n_classes)
 
-    return tf.keras.Model(inputs=inputs, outputs=x)
+    # Output block 2
+    x = _conv_block(x, w, 256, kernel_size=1)
+    x = UpSampling2D(size=2)(x)
+    x = Concatenate()([x, skip_61])
+    x, out_2 = _output_block(x, w, 256, n_classes)
+
+    # Output block 3
+    x = _conv_block(x, w, 128, kernel_size=1)
+    x = UpSampling2D(size=2)(x)
+    x = Concatenate()([x, skip_36])
+    x, out_3 = _output_block(x, w, 128, n_classes)
+
+    return tf.keras.Model(inputs=inputs, outputs=[out_1, out_2, out_3])
 
 
 def _conv_block(x, w, filters, kernel_size=3, strides=1, batch_norm=True):
@@ -81,9 +93,20 @@ def _conv_block(x, w, filters, kernel_size=3, strides=1, batch_norm=True):
     return x
 
 
+def _output_block(x, w, filters, n_classes):
+    for _ in range(2):
+        x = _conv_block(x, w, filters, kernel_size=1)
+        x = _conv_block(x, w, filters * 2)
+    x = _conv_block(x, w, filters, kernel_size=1)
+    skip = x
+    x = _conv_block(x, w, filters * 2)
+    x = _conv_block(x, w, 3 * (n_classes + 5), kernel_size=1, batch_norm=False)
+    return skip, x
+
+
 def _residual_block(x, w, filters):
     skip = x
-    x = _conv_block(x, w, filters // 2, kernel_size=1)
-    x = _conv_block(x, w, filters)
+    x = _conv_block(x, w, filters, kernel_size=1)
+    x = _conv_block(x, w, filters * 2)
     x = Add()([skip, x])
     return x
