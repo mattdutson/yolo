@@ -3,6 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
+  - opencv=4.5
   - pip=21.0
   - python=3.8
   - pip:
