@@ -20,7 +20,8 @@ def main(args):
     results = postprocess(boxes[0], classes[0],
                           max_boxes=args.max_boxes, iou_threshold=args.iou_threshold,
                           score_threshold=args.score_threshold)
-    annotated = annotate(image_bgr, *results, names, color=args.annotate_color)
+    annotated = annotate(image_bgr, *results, names,
+                         color=args.annotate_color, with_text=not args.no_text)
     os.makedirs(path.dirname(args.output_file), exist_ok=True)
     cv.imwrite(args.output_file, annotated)
 
@@ -52,6 +53,9 @@ def parse_args():
     parser.add_argument('-n', '--names-file',
                         default=path.join('names', 'coco.txt'),
                         help='file containing class names')
+    parser.add_argument('-N', '--no-text',
+                        action='store_true',
+                        help='omit text annotations on the output')
 
     return parser.parse_args()
 

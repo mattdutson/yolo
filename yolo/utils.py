@@ -2,14 +2,15 @@ import cv2 as cv
 import tensorflow as tf
 
 
-def annotate(image, x_1, x_2, y_1, y_2, scores, classes, names, color=(255, 0, 0)):
+def annotate(image, x_1, x_2, y_1, y_2, scores, classes, names, color=(255, 0, 0), with_text=True):
     color_bgr = tuple(reversed(color))
     for x_1_i, x_2_i, y_1_i, y_2_i, class_, score in zip(x_1, x_2, y_1, y_2, classes, scores):
         x_1_i, x_2_i, y_1_i, y_2_i = map(int, [x_1_i, x_2_i, y_1_i, y_2_i])
         image = cv.rectangle(image, (x_1_i, y_1_i), (x_2_i, y_2_i), color=color_bgr, thickness=2)
-        text = '{} - {:.2f}%'.format(names[class_].capitalize(), score * 100)
-        image = cv.putText(image, text, (x_1_i, y_1_i - 5), cv.FONT_HERSHEY_SIMPLEX,
-                           fontScale=0.5, color=color_bgr)
+        if with_text:
+            text = '{} - {:.2f}%'.format(names[class_].capitalize(), score * 100)
+            image = cv.putText(image, text, (x_1_i, y_1_i - 5), cv.FONT_HERSHEY_SIMPLEX,
+                               fontScale=0.5, color=color_bgr)
     return image
 
 
